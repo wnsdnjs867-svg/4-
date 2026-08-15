@@ -1,1 +1,36 @@
+name: 환율 대시보드 자동 갱신
 
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 0 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 저장소 가져오기
+        uses: actions/checkout@v4
+
+      - name: Python 준비
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 라이브러리 설치
+        run: pip install -r requirements.txt
+
+      - name: 대시보드 생성
+        run: python update_dashboard.py
+
+      - name: 결과 저장
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html trade_fx_dashboard.xlsx
+          git diff --cached --quiet || git commit -m "환율 대시보드 자동 갱신"
+          git push
