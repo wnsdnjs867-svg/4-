@@ -1,0 +1,143 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>자동 환율판</title>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont,
+                         "Apple SD Gothic Neo", Arial, sans-serif;
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f5f7fa;
+            color: #222;
+        }
+
+        .card {
+            padding: 20px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 14px;
+            border-bottom: 1px solid #dddddd;
+            text-align: center;
+        }
+
+        th {
+            color: white;
+            background: #2f6fed;
+        }
+
+        button {
+            padding: 10px 16px;
+            border: 0;
+            border-radius: 8px;
+            color: white;
+            background: #2f6fed;
+            font-size: 15px;
+        }
+
+        #status {
+            color: #666666;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>자동 원화 환율판</h1>
+
+        <button onclick="loadRates()">지금 새로고침</button>
+
+        <p id="status">환율을 불러오는 중...</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>통화</th>
+                    <th>기준 단위</th>
+                    <th>원화 환율</th>
+                    <th>환율 기준일</th>
+                </tr>
+            </thead>
+
+            <tbody id="rateTable"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const currencies = ["USD", "JPY", "EUR", "CNY"];
+
+        async function loadRates() {
+            const status = document.getElementById("status");
+            const table = document.getElementById("rateTable");
+
+            status.textContent = "최신 환율을 불러오는 중...";
+
+            try {
+                const results = await Promise.all(
+                    currencies.map(async currency => {
+                        const url =
+                            `https://api.frankfurter.dev/v2/rate/${currency}/KRW`;
+
+                        const response = await fetch(url);
+
+                        if (!response.ok) {
+                            throw new Error(`${currency} 조회 실패`);
+                        }
+
+                        return await response.json();
+                    })
+                );
+
+                table.innerHTML = "";
+
+                results.forEach(data => {
+                    const unit = data.base === "JPY" ? 100 : 1;
+                    const krwRate = data.rate * unit;
+
+                    const row = document.createElement("tr");
+
+                    row.innerHTML = `
+                        <td>${data.base}</td>
+                        <td>${unit}</td>
+                        <td>${krwRate.toLocaleString("ko-KR", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        })}원</td>
+                        <td>${data.date}</td>
+                    `;
+
+                    table.appendChild(row);
+                });
+
+                const checkedTime = new Date().toLocaleString("ko-KR");
+
+                status.textContent =
+                    `마지막 조회: ${checkedTime} · 1시간마다 자동 확인`;
+            } catch (error) {
+                status.textContent = "환율 조회 실패: " + error.message;
+            }
+        }
+
+        loadRates();
+
+        setInterval(loadRates, 60 * 60 * 1000);
+    </script>
+</body>
+</html>
